@@ -9,8 +9,32 @@ if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN || !IG_ACCOUNT_ID) {
   process.exit(1);
 }
 
+// Add or edit groups here; matching is case-insensitive on whole words.
+const KEYWORD_REPLIES = [
+  { keywords: ['info', 'information'], reply: 'Here is the info you asked for!' },
+  { keywords: ['price', 'pricing', 'cost'], reply: 'Our pricing starts at ₹999. DM us for details!' },
+  { keywords: ['contact', 'number', 'email'], reply: 'You can reach us at: your@email.com' },
+  { keywords: ['hi', 'hello', 'hey'], reply: 'Hey! How can we help you today?' },
+];
+
+const DEFAULT_REPLY = 'Thanks for your message! We will get back to you soon.';
+
+function pickReply(text) {
+  const match = KEYWORD_REPLIES.find(({ keywords }) =>
+    keywords.some((keyword) => {
+      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
+    })
+  );
+  return match ? match.reply : DEFAULT_REPLY;
+}
+
 const app = express();
 app.use(express.json());
+
+app.get('/', (req, res) => {
+  res.status(200).send('AUTO-DM is alive');
+});
 
 // Meta webhook verification handshake
 app.get('/webhook', (req, res) => {
@@ -30,7 +54,7 @@ app.get('/webhook', (req, res) => {
 // Send a DM through the Instagram Graph API
 async function reply(recipientId, text) {
   try {
-    console.log(`Sending reply via ${GRAPH_URL}`);
+    console.log(`Sending reply to ${recipientId} via ${GRAPH_URL}: ${text}`);
 
     const response = await fetch(
       `${GRAPH_URL}?access_token=${encodeURIComponent(PAGE_ACCESS_TOKEN)}`,
@@ -73,12 +97,7 @@ app.post('/webhook', (req, res) => {
       if (!senderId || !text || event.message.is_echo) continue;
 
       console.log(`Message from ${senderId}: ${text}`);
-
-      const replyText = text.toLowerCase().includes('info')
-        ? 'Here is the info you asked for!'
-        : 'Thanks for your message! We will get back to you soon.';
-
-      reply(senderId, replyText);
+      reply(senderId, pickReply(text));
     }
   }
 });
