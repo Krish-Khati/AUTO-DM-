@@ -1,11 +1,11 @@
 require('dotenv').config({ quiet: true });
 const express = require('express');
 
-const { PAGE_ACCESS_TOKEN, VERIFY_TOKEN, PORT = 3000 } = process.env;
-const GRAPH_URL = 'https://graph.facebook.com/v19.0/me/messages';
+const { PAGE_ACCESS_TOKEN, VERIFY_TOKEN, IG_ACCOUNT_ID, PORT = 3000 } = process.env;
+const GRAPH_URL = `https://graph.facebook.com/v21.0/${IG_ACCOUNT_ID}/messages`;
 
-if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN) {
-  console.error('Missing PAGE_ACCESS_TOKEN or VERIFY_TOKEN in .env');
+if (!PAGE_ACCESS_TOKEN || !VERIFY_TOKEN || !IG_ACCOUNT_ID) {
+  console.error('Missing PAGE_ACCESS_TOKEN, VERIFY_TOKEN or IG_ACCOUNT_ID in .env');
   process.exit(1);
 }
 
@@ -30,6 +30,8 @@ app.get('/webhook', (req, res) => {
 // Send a DM through the Instagram Graph API
 async function reply(recipientId, text) {
   try {
+    console.log(`Sending reply via ${GRAPH_URL}`);
+
     const response = await fetch(
       `${GRAPH_URL}?access_token=${encodeURIComponent(PAGE_ACCESS_TOKEN)}`,
       {
